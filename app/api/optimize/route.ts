@@ -4,12 +4,10 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { resumeText, jobDescription } = await req.json();
-    
-    // Ambil API Key dari Environment Variable
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    
+
     if (!apiKey) {
-      return NextResponse.json({ error: "API Key is missing in Vercel settings" }, { status: 500 });
+      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
