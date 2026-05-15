@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -7,28 +6,36 @@ export async function POST(req: Request) {
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
     if (!apiKey) {
-      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
+      return NextResponse.json({ error: "API Key is missing" }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // Kita tembak langsung ke API v1 (BUKAN v1beta)
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const prompt = `
-      You are an expert career coach and ATS specialist. 
-      Analyze the following resume against the job description.
-      Provide 3-5 specific, actionable suggestions to improve the resume for this role.
-      
-      Resume: ${resumeText}
-      Job Description: ${jobDescription}
-    `;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are an ATS expert. Suggest 3 improvements for this resume based on the job description. 
+            Resume: ${resumeText}
+            JD: ${jobDescription}`
+          }]
+        }]
+      })
+    });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const data = await response.json();
 
-    return NextResponse.json({ analysis: text });
+    if (data.error) {
+      return NextResponse.json({ error: data.error.message }, { status: data.error.code || 500 });
+    }
+
+    const aiText = data.candidates[0].content.parts[0].text;
+    return NextResponse.json({ analysis: aiText });
+
   } catch (error: any) {
-    console.error("AI Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to process AI" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
