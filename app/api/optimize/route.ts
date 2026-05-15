@@ -5,12 +5,10 @@ export async function POST(req: Request) {
     const { resumeText, jobDescription } = await req.json();
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "API Key is missing" }, { status: 500 });
-    }
+    if (!apiKey) return NextResponse.json({ error: "API Key is missing" }, { status: 500 });
 
-    // Kita tembak langsung ke API v1 (BUKAN v1beta)
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+    // Coba gunakan v1beta tapi dengan model flash (ini kombinasi paling stabil saat ini)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -18,7 +16,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `You are an ATS expert. Suggest 3 improvements for this resume based on the job description. 
+            text: `Analyze this resume for this job description and give 3-5 ATS optimization tips.
             Resume: ${resumeText}
             JD: ${jobDescription}`
           }]
@@ -29,13 +27,18 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (data.error) {
-      return NextResponse.json({ error: data.error.message }, { status: data.error.code || 500 });
+      // Jika error, kita kirim pesan error aslinya agar kita tahu masalahnya di mana
+      return NextResponse.json({ error: `Google API Error: ${data.error.message}` }, { status: 500 });
+    }
+
+    if (!data.candidates || data.candidates.length === 0) {
+      return NextResponse.json({ error: "AI did not return any suggestions. Try shorter text." }, { status: 500 });
     }
 
     const aiText = data.candidates[0].content.parts[0].text;
     return NextResponse.json({ analysis: aiText });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: `System Error: ${error.message}` }, { status: 500 });
   }
 }
