@@ -1,4 +1,38 @@
-return (
+"use client";
+import { useState } from "react";
+
+export default function ResumeTailor() {
+  const [resume, setResume] = useState("");
+  const [jd, setJd] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleOptimize = async () => {
+    if (!resume || !jd) return alert("Please fill in both Resume and JD!");
+    
+    setLoading(true);
+    setResult(""); 
+    
+    try {
+      const response = await fetch("/api/optimize", {
+        method: "POST",
+        body: JSON.stringify({ resume, jd }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      
+      if (data.error) {
+        setResult("Error: " + data.error);
+      } else {
+        setResult(data.text);
+      }
+    } catch (error) {
+      setResult("Oops! Something went wrong while calling the AI.");
+    }
+    setLoading(false);
+  };
+
+  return (
     <main className="min-h-screen p-8 bg-white text-black">
       <div className="max-w-4xl mx-auto">
         <header className="mb-10 text-center">
@@ -52,3 +86,4 @@ return (
       </div>
     </main>
   );
+}
